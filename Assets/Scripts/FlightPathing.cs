@@ -11,7 +11,6 @@ public class FlightPathing : MonoBehaviour
 	
 	public bool hasCompletedPath;
 	
-	private bool isBossEnemy;
 	
 	private float distanceTravelled;
 	
@@ -23,7 +22,6 @@ public class FlightPathing : MonoBehaviour
     void Start()
     {
 		hasCompletedPath = false;
-		isBossEnemy = false;
 		
 		GameObject gameControllerObject = GameObject.FindWithTag ("GameController"); // find game controller to handle bullet counts, score etc
 		if (gameControllerObject != null){

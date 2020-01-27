@@ -9,6 +9,8 @@ public class InFormation : MonoBehaviour
 	public PathCreator pathCreator2;
 	public PathCreator pathCreator3;
 	public PathCreator pathCreator4;
+	//public PathCreator bossSuccPath1;
+	//public PathCreator bossSuccFinishPath1;
 	public PathCreator returnPath;
 	
 	public EndOfPathInstruction end;
@@ -24,11 +26,15 @@ public class InFormation : MonoBehaviour
 	private float willShoot;//random between 0/1, <.5 no, >=.5 will shoot
 	private bool setShoot;//prevent overwriting willShoot
 	private bool hasFinishedSwoop;
+	private bool hasShot;
+	//private bool hasCompletedSucc;
+	//private bool currentlySuccing;
 	
 	private float anchorPointPingPong; // anchor for InFormation ping pong bing bong
 	
 	private int swoopGuarantee;
 	
+	public GameObject enemyBullet;
 	
 	
 	public float speed;
@@ -38,6 +44,8 @@ public class InFormation : MonoBehaviour
 	private GameController gameController;
 	
 	private int blockPlacement;
+	private int bossBlockPlacement;
+	
 	
     // Start is called before the first frame update
     void Start()
@@ -45,7 +53,12 @@ public class InFormation : MonoBehaviour
 		swoopGuarantee = 0;
         hasCompletedPath = false;
 		hasFinishedSwoop = false;
+		//hasCompletedSucc = false;
+		//currentlySuccing = false;
 		isBossEnemy = false;
+		if (this.tag == "Boss"){
+			isBossEnemy = true;
+		}
 		inFormation = false;
 		hasReceivedMarchingOrdersCheiftain = false;
 		swooping = false;
@@ -54,7 +67,10 @@ public class InFormation : MonoBehaviour
 		distanceTravelled = 0;
 		
 		
-		this.GetComponent<FlightPathing>().enabled = true;
+		
+		if (isBossEnemy != true){
+			this.GetComponent<FlightPathing>().enabled = true;
+		}
 		
 		
 		GameObject gameControllerObject = GameObject.FindWithTag ("GameController"); // find game controller to handle bullet counts, score etc
@@ -64,34 +80,38 @@ public class InFormation : MonoBehaviour
 		if (gameController == null){
 			Debug.Log ("Cannot find 'GameController' script.");
 		}
-		blockPlacement = gameController.blockPlacement(); 
+		if (isBossEnemy != true){
+			blockPlacement = gameController.blockPlacement(); 
+		}
+		if (isBossEnemy == true){
+			bossBlockPlacement = gameController.bossBlockPlacement();
+			//Debug.Log(bossBlockPlacement);
+		}
     }
 
     // Update is called once per frame
     void Update()
     {
         if (hasCompletedPath == true & isBossEnemy == false & inFormation == false){//Block Formation Time
-			/*if (hasReceivedMarchingOrdersCheiftain == false){
-				blockPlacement = gameController.blockPlacement(); // where do I go sir?
-				hasReceivedMarchingOrdersCheiftain = true;
-			}*/ //I don't think this is necessary anymore
 			
-			//Debug.Log(blockPlacement);
-			//Debug.Log(Node[blockPlacement].position);
 			transform.position = Vector3.MoveTowards(transform.position, Node[blockPlacement].position, (speed * Time.deltaTime));
 			
-			
-			//move to one of the 20 minion placements or one of 4 boss placements
-			//ask GameController Nicely where I should go
 		}
-		if (hasCompletedPath == true & (transform.position == Node[blockPlacement].position)){
+		if (hasCompletedPath == true & isBossEnemy == true & inFormation == false){//Block Formation Time
+			
+			transform.position = Vector3.MoveTowards(transform.position, Node[bossBlockPlacement].position, (speed * Time.deltaTime));
+			
+		}
+		if (((hasCompletedPath == true & (transform.position == Node[blockPlacement].position)) || ((hasCompletedPath == true & (transform.position == Node[bossBlockPlacement].position))))){
+			
 			anchorPointPingPong = transform.position.x;
 			inFormation = true;//then do the PingPong
 		}
 		if (inFormation == true & swooping == false){
 			transform.position = new Vector3((anchorPointPingPong + Mathf.PingPong(Time.time, 0.5f)), transform.position.y, transform.position.z);
-			if (((Random.Range(0, 10f)>9.999f) || swoopGuarantee>10000) & (gameController.enemyWaveCount == 5)){
-				swoopGuarantee++;
+			swoopGuarantee++;
+			if (((Random.Range(0, 10f)>9.999f) || swoopGuarantee>10000) & (gameController.enemyWaveCount >= 6)){
+				
 				swooping = true;
 			}
 				
@@ -99,7 +119,7 @@ public class InFormation : MonoBehaviour
 		if (swooping == true){//swoops
 			
 			if (setShoot == false){//set shoot and swoop tha woop
-				willShoot = Random.Range(0, 1);
+				willShoot = Random.Range(0, 2);
 				swoopPath = Random.Range(0, 4); // returns an int 0-3
 				//Debug.Log("I swooped");
 				setShoot = true;
@@ -108,15 +128,17 @@ public class InFormation : MonoBehaviour
 				distanceTravelled += speed * Time.deltaTime; //this chunk is swoop flight
 			
 				transform.position = pathCreator1.path.GetPointAtDistance(distanceTravelled, end);
-			if ((willShoot >0.5f) & (transform.position == pathCreator1.path.GetPointAtDistance(10))){//find halfwaypoint{
+			if ((willShoot == 1) & (distanceTravelled >=3) & hasShot == false){//find halfwaypoint{
 				Debug.Log("Shoot here");
-				setShoot = true;//shoot bullet at player halfway through path.
+				Instantiate(enemyBullet, transform.position, Quaternion.identity);
+				hasShot = true;//shoot bullet at player halfway through path.
 			}
 			if (distanceTravelled > 30f){
 				swooping = false;
 				swoopGuarantee = 0;
 				hasFinishedSwoop = true;
 				distanceTravelled = 0;
+				hasShot = false;
 				//Debug.Log("SwoopingIsFalse");
 				inFormation = false;
 			}
@@ -125,15 +147,17 @@ public class InFormation : MonoBehaviour
 				distanceTravelled += speed * Time.deltaTime; //this chunk is swoop flight
 			
 				transform.position = pathCreator2.path.GetPointAtDistance(distanceTravelled, end);
-			if ((willShoot >0.5f) & (transform.position == pathCreator2.path.GetPointAtDistance(10))){//find halfwaypoint{
+			if ((willShoot == 1) & (distanceTravelled >=3) & hasShot == false){//find halfwaypoint{
 				Debug.Log("Shoot here");
-				setShoot = true;//shoot bullet at player halfway through path.
+				Instantiate(enemyBullet, transform.position, Quaternion.identity);
+				hasShot = true;//shoot bullet at player halfway through path.
 			}
 			if (distanceTravelled > 30f){
 				swooping = false;
 				swoopGuarantee = 0;
 				hasFinishedSwoop = true;			
 				distanceTravelled = 0;
+				hasShot = false;
 				//Debug.Log("SwoopingIsFalse");
 				inFormation = false;
 			}
@@ -142,15 +166,17 @@ public class InFormation : MonoBehaviour
 				distanceTravelled += speed * Time.deltaTime; //this chunk is swoop flight
 			
 				transform.position = pathCreator3.path.GetPointAtDistance(distanceTravelled, end);
-			if ((willShoot >0.5f) & (transform.position == pathCreator3.path.GetPointAtDistance(10))){//find halfwaypoint{
+			if ((willShoot == 1) & (distanceTravelled >=3) & hasShot == false){//find halfwaypoint{
 				Debug.Log("Shoot here");
-				setShoot = true;//shoot bullet at player halfway through path.
+				Instantiate(enemyBullet, transform.position, Quaternion.identity);
+				hasShot = true;//shoot bullet at player halfway through path.
 			}
 			if (distanceTravelled > 30f){
 				swooping = false;
 				swoopGuarantee = 0;
 				hasFinishedSwoop = true;
 				distanceTravelled = 0;
+				hasShot = false;
 				//Debug.Log("SwoopingIsFalse");
 				inFormation = false;
 			}
@@ -159,15 +185,17 @@ public class InFormation : MonoBehaviour
 				distanceTravelled += speed * Time.deltaTime; //this chunk is swoop flight
 			
 				transform.position = pathCreator4.path.GetPointAtDistance(distanceTravelled, end);
-			if ((willShoot >0.5f) & (transform.position == pathCreator4.path.GetPointAtDistance(10))){//find halfwaypoint{
+			if ((willShoot == 1) & (distanceTravelled >=3) & hasShot == false){//find halfwaypoint{
 				Debug.Log("Shoot here");
-				setShoot = true;//shoot bullet at player halfway through path.
+				Instantiate(enemyBullet, transform.position, Quaternion.identity);
+				hasShot = true;//shoot bullet at player halfway through path.
 			}
 			if (distanceTravelled > 30f){
 				swooping = false;
 				swoopGuarantee = 0;
 				hasFinishedSwoop = true;
 				distanceTravelled = 0;
+				hasShot = false;
 				//Debug.Log("SwoopingIsFalse");
 				inFormation = false;
 			}
@@ -194,4 +222,13 @@ public class InFormation : MonoBehaviour
 	{
 		isBossEnemy = true;
 	}
+	
+	/*public void SuccToggle(){
+		currentlySuccing ^= true;
+	}*/
+	
+	/*IEnumerator PauseForSeconds(float t){
+		yield return new WaitForSeconds(t);
+		currentlySuccing = false;
+	}*/
 }
